@@ -1,7 +1,23 @@
 import React, { useState } from 'react';
+import Geocode from 'react-geocode';
 import { collection, addDoc } from "firebase/firestore";
 import { db } from './firebase';
 import './App.css';
+
+Geocode.setApiKey("AIzaSyBoY4Yn60USF1fDNIm65QVpRBowNeBBgbA");
+Geocode.setLanguage('de');
+Geocode.setRegion('de');
+Geocode.enableDebug(true);
+const addressToGeoCoords = async (address) => {
+  console.log(address);
+  try {
+    const res = await Geocode.fromAddress(address);
+    const { lat, lng } = res.results[0].geometry.location;
+    return { latitude: lat, longitude: lng };
+  } catch (error) {
+    console.error(error.message);
+  }
+};
 
 function App() {
   const [file, setFile] = useState();
@@ -33,7 +49,7 @@ function App() {
         const headerKey = header.split(" ").join("");
         object[headerKey] = values[index];
         return object;
-      }, {});
+      }, {}); 
       delete obj.Ignored;
       return obj;
     });
@@ -47,8 +63,9 @@ function App() {
     if(array.length){
       console.log("start........");
       await Promise.all(
-        array.map((item) => {
-          const res = addDoc(collection(db,'address'), {...item});          
+        array.map(async(item, index) => {
+          const geoCode = await addressToGeoCoords(item?.PostalCode);
+          const res = await addDoc(collection(db,'address'), {...item, geoCoords: geoCode, assigned: '0', id: index });          
           return res.id
         })
       );
