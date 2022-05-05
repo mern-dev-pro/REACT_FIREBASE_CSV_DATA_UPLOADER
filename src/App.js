@@ -9,15 +9,22 @@ Geocode.setLanguage('de');
 Geocode.setRegion('de');
 Geocode.enableDebug(true);
 const addressToGeoCoords = async (address) => {
-  console.log(address);
   try {
     const res = await Geocode.fromAddress(address);
     const { lat, lng } = res.results[0].geometry.location;
     return { latitude: lat, longitude: lng };
   } catch (error) {
-    console.error(error.message);
+    return { latitude: 0, longitude: 0}
   }
 };
+
+function sleep(milliseconds) {
+  const date = Date.now();
+  let currentDate = null;
+  do {
+    currentDate = Date.now();
+  } while (currentDate - date < milliseconds);
+}
 
 function App() {
   const [file, setFile] = useState();
@@ -62,13 +69,11 @@ function App() {
   const uploadToFirebse = async() => {
     if(array.length){
       console.log("start........");
-      await Promise.all(
-        array.map(async(item, index) => {
-          const geoCode = await addressToGeoCoords(item?.PostalCode);
-          const res = await addDoc(collection(db,'address'), {...item, geoCoords: geoCode, assigned: '0', id: index });          
-          return res.id
-        })
-      );
+      let index = 0;
+      for await (const item of array) {
+        const geoCode = await addressToGeoCoords(item?.PostalCode);
+        await addDoc(collection(db,'address'), {...item, geoCoords: geoCode, assigned: '0', id: index++ });
+      }
       console.log("end........");
     }
   }
